@@ -4,50 +4,91 @@
  * A sound effects demo for Sinclair ZX Spectrum Next.
  ******************************************************************************/
 
+#include <arch/zxn.h>
+#include <arch/zxn/color.h>
+#include <arch/zxn/esxdos.h>
+#include <errno.h>
 #include <input.h>
 #include <z80.h>
 #include <intrinsic.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <string.h>
-#include "ayfx.h"
+#include <time.h>
+#include <sys/time.h>
 
-#pragma output CRT_ORG_CODE = 0x8184
-#pragma output CLIB_MALLOC_HEAP_SIZE = 0
-#pragma printf = "%c %s"
+#include "config/zconfig.h"
+
+#include "zxnext/src/dma.h"
+#include "zxnext/src/bank.h"
+#include "zxnext/src/sound.h"
 
 #define printCls() printf("%c", 12)
 #define printAt(col, row, str) printf("\x16%c%c%s", (col), (row), (str))
 
-extern uint8_t sfx[];
+unsigned char m_tick;
+unsigned long m_milliseconds;
+unsigned char m_timer;
+
+static void hardware_init(void)
+{
+	// Make sure the Spectrum ROM is paged in initially.
+	//IO_7FFD = IO_7FFD_ROM0;
+
+	// Put Z80 in 28 MHz turbo mode.
+	ZXN_NEXTREG(REG_TURBO_MODE, RTM_28MHZ);
+
+	// Disable RAM memory contention.
+	ZXN_NEXTREGA(REG_PERIPHERAL_3, ZXN_READ_REG(REG_PERIPHERAL_3) | RP3_DISABLE_CONTENTION | RP3_ENABLE_TURBOSOUND);
+}
+
+IM2_DEFINE_ISR_8080(isr)
+{
+	// update the clock
+	++m_tick;
+	
+	m_milliseconds += 20; // 50 Hz
+}
 
 static void isr_init(void)
 {
-    // Set up IM2 interrupt service routine:
-    // Put Z80 in IM2 mode with a 257-byte interrupt vector table located
-    // at 0x8000 (before CRT_ORG_CODE) filled with 0x81 bytes. Install the
-    // vt_play_isr() interrupt service routine at the interrupt service routine
-    // entry at address 0x8181.
+	// Set up IM2 interrupt service routine:
+	// Put Z80 in IM2 mode with a 257-byte interrupt vector table located
+	// at 0x6000 (before CRT_ORG_CODE) filled with 0x61 bytes. Install an
+	// empty interrupt service routine at the interrupt service routine
+	// entry at address 0x8181.
 
-    intrinsic_di();
-    im2_init((void *) 0x8000);
-    memset((void *) 0x8000, 0x81, 257);
-    z80_bpoke(0x8181, 0xC3);
-    z80_wpoke(0x8182, (uint16_t) afx_play_isr);
-    intrinsic_ei();
+	intrinsic_di();
+	im2_init((void *)0x8000);
+	memset((void *)0x8000, 0x81, 257);
+
+	z80_bpoke(0x8181, 0xc3);
+	z80_wpoke(0x8182, (unsigned int)isr);
+	intrinsic_ei();
+}
+
+static void background_create(void)
+{
+	zx_border(INK_WHITE);
+	zx_cls(INK_BLACK | PAPER_WHITE);
 }
 
 int main(void)
 {
     int effect_index = 0;
-	
-    afx_init(sfx);
-    isr_init();
+
+    hardware_init();
+	background_create();
 
     printCls();
     printAt(8, 10, "Enjoy the sound!\n");
     printAt(3, 12, "Press any key to cycle sfx\n");
+''
+    isr_init();
+    sfx_init();
+    audio_isr_init();
 
     while (true)
     {
@@ -55,10 +96,15 @@ int main(void)
         {
             in_wait_nokey();
 
-            afx_play(effect_index);
+            sfx_play(effect_index);
 
             if (++effect_index == 6)
                 effect_index = 0;
         }
     }
+
+    // Trig a soft reset. The Next hardware registers and I/O ports will be reset by NextZXOS after a soft reset.
+	ZXN_NEXTREG(REG_RESET, RR_SOFT_RESET);
+
+	return 0;
 }

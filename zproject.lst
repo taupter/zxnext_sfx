@@ -1,4 +1,8 @@
-src/ayfx.asm
-src/ayfxplay.asm
+src/music.asm
+zxnext/src/bank.c
+zxnext/src/sound.c
+zxnext/src/dma.c
+zxnext/src/ayfx.asm
+zxnext/src/ayfxplay.asm
 src/sound.asm
 src/main.c

@@ -1,6 +1,6 @@
-SECTION rodata_user
+SECTION BANK_32
 
-PUBLIC _sfx
+PUBLIC _sfx0
 
-_sfx:
+_sfx0:
 BINARY "binary/sfx.afb"

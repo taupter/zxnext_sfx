@@ -1,6 +1,6 @@
 ################################################################################
-# Ben Baker 2020
-# zxnext_sfx
+# Ben Baker 2021
+# zxnext_dual_vt_sound
 ################################################################################
 
 MKDIR := mkdir -p
@@ -25,7 +25,7 @@ CFLAGS := +zxn -subtype=nex -vn -startup=1 -clib=sdcc_iy -m $(CFLAGS_OPT)
 
 all:
 	$(MKDIR) $(BINDIR)
-	zcc $(CFLAGS) $(DEBUG) @zproject.lst -o $(BINDIR)/zxnext_sfx -create-app
+	zcc $(CFLAGS) $(DEBUG) -pragma-include:config/zpragma.inc @zproject.lst -o $(BINDIR)/zxnext_sfx -create-app
 
 debug: DEBUG = $(DEBUGFLAGS)
 
